@@ -1,4 +1,4 @@
-import React, { useCallback, useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect, useRef } from 'react';
 import './App.css';
 import chatClient from './ChatClient'
 
@@ -93,8 +93,16 @@ const UserListItem = ({ name }) => {
 }
 
 const MessageList = ({ items, ...props }) => {
+  const containerRef = useRef(null)
+
+  useEffect(() => {
+    if (containerRef.current) {
+      containerRef.current.scrollTop = containerRef.current.scrollHeight
+    }
+  }, [items])
+
   return (
-    <div className="MessageList" {...props}>
+    <div ref={containerRef} className="MessageList" {...props}>
       {items.map(({ id, ...props }) => (
         <MessageListItem key={id} id={id} {...props} />
       ))}
@@ -111,7 +119,15 @@ const MessageListItem = ({ from, content, createdAt }) => {
   )
 }
 
-const TextInput = ({ value, onEnter, ...props }) => {
+const TextInput = ({ value, onEnter, autofocus, clearOnEnter, ...props }) => {
+  const inputRef = useRef(null)
+
+  useEffect(() => {
+    if (autofocus && inputRef.current) {
+      inputRef.current.focus()
+    }
+  }, [autofocus, inputRef])
+
   const handleKeyUp = useCallback((event) => {
     if (event.keyCode !== 13) {
       return
@@ -122,21 +138,26 @@ const TextInput = ({ value, onEnter, ...props }) => {
     }
 
     onEnter(event.target.value)
-  }, [ onEnter ])
 
-  return <input type="text" value={value} onKeyUp={handleKeyUp} {...props} />
+    if (clearOnEnter) {
+      event.target.value = ''
+    }
+  }, [ onEnter, clearOnEnter ])
+
+  return <input type="text" value={value} onKeyUp={handleKeyUp} ref={inputRef} {...props} />
 }
 
 function App() {
   const { client } = useChat()
   const [name, setName] = useState(null)
   const [currentRoomId, setCurrentRoomId] = useState(null)
+  const [messageValue, setMessageValue] = useState('')
   const rooms = useChatRooms()
   const users = useChatUsers()
   const messages = useChatMessages()
 
   const handleItemClick = (item) => {
-    client.joinRoom(item.name)
+    client.joinRoom(item.id)
     setCurrentRoomId(item.id)
   }
 
@@ -155,6 +176,15 @@ function App() {
     }
 
     client.sendMessage(content)
+    setMessageValue('')
+  }, [client])
+
+  const handleOnMessageChange = useCallback((event) => {
+    setMessageValue(event.target.value)
+  }, [])
+
+  const handleOnCreateRoomEnter = useCallback((name) =>{
+    client.createRoom(name)
   }, [client])
 
   if (!client.connected) {
@@ -165,22 +195,28 @@ function App() {
     return (
       <div className="NameModal">
         <p style={{fontSize:'3rem', color: '#fff', textAlign: 'center', marginBottom: '2rem'}}>What's your name?</p>
-        <TextInput className="NameTextInput" onEnter={handleOnNameEnter} />
+        <TextInput autofocus className="NameTextInput" onEnter={handleOnNameEnter} />
       </div>
     )
   }
+
+  const currentRoom = rooms.find(room => room.id === currentRoomId)
 
   return (
     <div className="App">
       <div className="LeftColumn">
         <RoomList items={rooms} activeItemId={currentRoomId} onItemClick={handleItemClick} />
+
+        <TextInput className="CreateRoomTextInput" placeholder="Create a room..." onEnter={handleOnCreateRoomEnter} clearOnEnter />
       </div>
 
       <div className="MiddleColumn">
+        {currentRoom ? <div style={{borderBottom: '1px solid #25282c', fontSize: '2rem', padding: '1rem 2rem', color: '#fff'}}>{currentRoom.name}</div> : null}
+
         <MessageList items={messages} />
 
         <div style={{marginTop: 'auto'}}>
-          <TextInput className="MessageTextInput" placeholder="Type something awesome..." onEnter={handleOnMessageEnter} />
+          <TextInput className="MessageTextInput" placeholder="Type something awesome..." onEnter={handleOnMessageEnter} clearOnEnter />
         </div>
       </div>
 

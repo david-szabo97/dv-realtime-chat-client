@@ -88,19 +88,23 @@ class ChatClient {
   }
 
   setName(name) {
-    this.send('SET_NAME', name)
+    this.send('SET_NAME', { name })
   }
 
   joinRoom(id) {
-    this.send('JOIN_ROOM', id)
+    this.send('JOIN_ROOM', { id })
   }
 
   leaveRoom(id) {
-    this.send('LEAVE_ROOM', id)
+    this.send('LEAVE_ROOM', { id })
   }
 
   sendMessage(content) {
-    this.send('SEND_MESSAGE', content)
+    this.send('SEND_MESSAGE', { content })
+  }
+
+  createRoom(name) {
+    this.send('CREATE_ROOM', { name })
   }
 }
 
